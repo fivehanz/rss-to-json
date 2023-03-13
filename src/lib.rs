@@ -40,6 +40,10 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
             // set json headers
             let mut headers = Headers::new();
             headers.set("Content-Type", "application/json").unwrap();
+		    headers.set("Access-Control-Allow-Origin", "*").unwrap();
+		    headers.set("Access-Control-Allow-Credentials", "true").unwrap();
+		    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS").unwrap();
+		    headers.set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept").unwrap();
 
             // return self
             Ok(Response::with_headers(res.unwrap(), headers))
