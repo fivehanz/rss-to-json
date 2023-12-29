@@ -1,10 +1,9 @@
-// use serde_json::json;
-use worker::{*, Headers};
+use worker::*;
 
-mod utils;
 mod feed;
+mod utils;
 
-const RSS_URL : &str = "https://blog.fivehanz.xyz/rss.xml";
+const RSS_URL: &str = "https://devblog.hanz.lol/rss.xml";
 
 fn log_request(req: &Request) {
     console_log!(
@@ -16,7 +15,19 @@ fn log_request(req: &Request) {
     );
 }
 
+fn get_json_headers() -> Headers {
+    let mut headers = Headers::new();
+    headers.set("Content-Type", "application/json").unwrap();
+    headers.set("Access-Control-Allow-Origin", "*").unwrap();
+    headers
+        .set(
+            "Access-Control-Allow-Headers",
+            "Origin, Content-Type, Accept",
+        )
+        .unwrap();
 
+    headers
+}
 
 #[event(fetch)]
 pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Response> {
@@ -28,26 +39,26 @@ pub async fn main(req: Request, env: Env, _ctx: worker::Context) -> Result<Respo
     let router = Router::new();
 
     router
-        .get_async("/", |_, _| async move { 
-            // rss xml to json string
-            let feed_json_string = feed::feed_json_string(RSS_URL).await;
-            
-            // response with the string
-            let res = Response::ok(
-                feed_json_string
-            );
+        .post_async("/", |mut req, _ctx| async move {
+            let data: FormData = match req.form_data().await {
+                Ok(data) => data,
+                Err(_) => return Response::error("Bad Request", 400),
+            };
 
-            // set json headers
-            let mut headers = Headers::new();
-            headers.set("Content-Type", "application/json").unwrap();
-		    headers.set("Access-Control-Allow-Origin", "*").unwrap();
-		    headers.set("Access-Control-Allow-Credentials", "true").unwrap();
-		    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS").unwrap();
-		    headers.set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept").unwrap();
+            let url = match data.get("url") {
+                Some(FormEntry::Field(s)) => s,
+                _ => return Response::error("Bad Request", 400),
+            };
 
-            // return self
-            Ok(Response::with_headers(res.unwrap(), headers))
-        }) 
+            let feed_json_string = feed::feed_json_string(&url).await;
+            let res = Response::ok(feed_json_string.unwrap());
+            Ok(Response::with_headers(res.unwrap(), get_json_headers()))
+        })
+        .get_async("/", |_, _| async move {
+            let feed_json_string = feed::feed_json_string(&RSS_URL).await;
+            let res = Response::ok(feed_json_string.unwrap());
+            Ok(Response::with_headers(res.unwrap(), get_json_headers()))
+        })
         .run(req, env)
         .await
 }
