@@ -1,6 +1,7 @@
 name = "rss-to-json" # todo
 main = "build/worker/shim.mjs"
 compatibility_date = "2022-01-20"
+route = { pattern = "rss-to-json.hanz.lol/*", zone_name = "hanz.lol" }
 
 [vars]
 WORKERS_RS_VERSION = "0.0.11"
